@@ -12,6 +12,7 @@ This implementation does come with few limitations.
  * Only works when you defined a "protobuf" file to work with your Cache contents. If are using freestyle objects, this will not work. (it should be also fairly simple to come with with DDL based schema)
  * Insert/Update/Delete only works when the Protobuf message has additional annotation to mark a column as Identity (@Id) column. See more details in "Enhancing Protobuf Metadata" section.
  * There can be only single top level message in your Protobuf file for single cache in Infinispan. See "Enhancing Protobuf Metadata" to define a way tie protobuf's message to cache such that more than single top level message can be defined in a single protobuf file.
+ * Due to inherent nature of nested documents in the Infinispan cache, if a message has child(ren) messages, when parent is deleted all the children are cascade deleted also.
  
 # JAVA Example
 
