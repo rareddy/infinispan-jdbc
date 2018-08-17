@@ -19,6 +19,9 @@
 package io.infinispan.data;
 
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.resource.ResourceException;
@@ -43,7 +46,7 @@ public class InfinispanConnectionImpl extends BasicConnection implements Infinis
 
     private BasicCache<?, ?> defaultCache;
     private SerializationContext ctx;
-    private ThreadAwareMarshallerProvider marshallerProvider = new ThreadAwareMarshallerProvider();
+    private TeiidMarshallerProvider marshallerProvider = new TeiidMarshallerProvider();
     private InfinispanConnectionFactory icf;
     private RemoteCacheManager scriptManager;
     private String cacheTemplate;
@@ -95,47 +98,40 @@ public class InfinispanConnectionImpl extends BasicConnection implements Infinis
 
     @Override
     public void registerMarshaller(BaseMarshaller<InfinispanDocument> marshaller) throws TranslatorException {
-        ThreadAwareMarshallerProvider.setMarsheller(marshaller);
+        marshallerProvider.setMarsheller(marshaller);
     }
 
     @Override
     public void unRegisterMarshaller(BaseMarshaller<InfinispanDocument> marshaller) throws TranslatorException {
-        ThreadAwareMarshallerProvider.setMarsheller(null);
+        marshallerProvider.removeMarsheller(marshaller);
     }
 
-    /**
-     * The reason for thread aware marshaller is due to fact the serialization context is JVM wide, so if some other
-     * connection is also trying to register a marshaller for same object, they should not conflict.
-     */
-    static class ThreadAwareMarshallerProvider implements MarshallerProvider {
+    static class TeiidMarshallerProvider implements MarshallerProvider {
+        private HashMap<String, BaseMarshaller<?>> context = new HashMap<>();
+        private HashMap<Class<?>, BaseMarshaller<?>> contextByClass = new HashMap<>();
 
-        private static ThreadLocal<BaseMarshaller<?>> context = new ThreadLocal<BaseMarshaller<?>>() {
-            @Override
-            protected BaseMarshaller<?> initialValue() {
-                return null;
+        public void setMarsheller(BaseMarshaller<?> marshaller) {
+            synchronized (context) {
+                if (context.get(marshaller.getTypeName()) != null) {
+                    throw new IllegalStateException("connection can not be shred with multiple threads");
+                }
+                context.put(marshaller.getTypeName(), marshaller);
+                contextByClass.put(marshaller.getJavaClass(), marshaller);
             }
-        };
-
-        public static void setMarsheller(BaseMarshaller<?> marshaller) {
-            context.set(marshaller);
         }
-
+        public void removeMarsheller(BaseMarshaller<?> marshaller) {
+            synchronized (context) {
+                context.remove(marshaller.getTypeName(), marshaller);
+                contextByClass.remove(marshaller.getJavaClass(), marshaller);
+            }
+        }
         @Override
         public BaseMarshaller<?> getMarshaller(String typeName) {
-            BaseMarshaller<?> m = context.get();
-            if (m != null && typeName.equals(m.getTypeName())) {
-                return context.get();
-            }
-            return null;
+            return context.get(typeName);
         }
-
         @Override
         public BaseMarshaller<?> getMarshaller(Class<?> javaClass) {
-            BaseMarshaller<?> m = context.get();
-            if (m != null && javaClass.isAssignableFrom(InfinispanDocument.class)) {
-                return context.get();
-            }
-            return null;
+            return contextByClass.get(javaClass);
         }
     }
 
@@ -151,5 +147,18 @@ public class InfinispanConnectionImpl extends BasicConnection implements Infinis
 		if (cache.get(scriptName) == null) {
 			cache.put(scriptName, script);
 		}
+	}
+	
+	static class ProxyCache implements InvocationHandler {
+
+	    public ProxyCache(Object instance) {
+	        
+	    }
+        @Override
+        public Object invoke(Object arg0, Method arg1, Object[] arg2) throws Throwable {
+            // TODO Auto-generated method stub
+            return null;
+        }
+	    
 	}
 }

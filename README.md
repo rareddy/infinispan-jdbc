@@ -1,23 +1,23 @@
 # Infinispan JDBC Driver
 
-This project is implementation of JDBC Driver for Infinispan distributed in-memory key/value store based Teiid (https://teiid.io) technology.
+This project is a implementation of JDBC Driver for Infinispan distributed in-memory key/value store based on Teiid (https://teiid.io) technology.
 
-If you are thinking, a JDBC driver for key/value store? yes, that is correct, using this driver, you can access Infinispan cluster as you would access Oracle, Postgres, MySQL etc. You could readily use this driver with any Business Analytics to analyze the data inside Infinispan cluster. You could use this driver to query/insert/update/delete rows from Infinispan Cache. Please note, that when you modify data using this driver (insert, update, delete) it will be using the same internal object format as your custom application that is written using Protobuf mechanism.
+If you are thinking, a JDBC driver for key/value store? yes, that is correct, using this driver, you can access Infinispan cluster as you would access Oracle, Postgres, MySQL etc. You could readily use this driver with any BI tools to analyze the data inside Infinispan cluster. You could use this driver to query/insert/update/delete rows to/from Infinispan Cache. Please note, that when you modify data using this driver (insert, update, delete) it will be using the same internal object format as your custom application that is written using Protobuf mechanism.
  
-Since this driver is simple wrapper around the Teiid technology, you have all SQL query support that Teiid provides, even if some of the support is not natively supported by Infinispan. You can use huge library of Teiid functions. However please note that since pushdown support is not fully available, some of these functions are being executed locally to put the results together. Hopefully in future releases, we will write enough distributed functions to process them remotely on Infinispan Cluster. 
+Since this driver is simple wrapper around the Teiid technology, you have all SQL query support that Teiid provides, even if some of the support is not natively supported by Infinispan. You can use huge library of Teiid functions. However note that since pushdown support is not fully available, some of these functions are being executed locally to put the results together, that means execution times may be higher. Hopefully in future releases, we will write enough distributed execution functions to process them remotely on Infinispan Cluster. 
  
 ### Limitations
 This implementation does come with few limitations.
  * Only works with Remote Inifinispan over HotRod client. No, library mode.
- * Only works when you defined a "protobuf" file to work with your Cache contents. If are using freestyle objects, this will not work.
+ * Only works when you defined a "protobuf" file to work with your Cache contents. If are using freestyle objects, this will not work. (it should be also fairly simple to come with with DDL based schema)
  * Insert/Update/Delete only works when the Protobuf message has additional annotation to mark a column as Identity (@Id) column. See more details in "Enhancing Protobuf Metadata" section.
- * There can be only single top level message in your Protobuf file for single cache in Infinispan. See "Enhancing Protobuf Metadata" to define a way tie message to cache such that more than sigle top level messages can be defined in the single protobuf file.
+ * There can be only single top level message in your Protobuf file for single cache in Infinispan. See "Enhancing Protobuf Metadata" to define a way tie protobuf's message to cache such that more than single top level message can be defined in a single protobuf file.
  
 # JAVA Example
 
-If you are working with maven add the below dependency
+If you are working with maven add the below dependency to your project
 ```
-Maven co-ordinates to come once first version is published
+Maven co-ordinates to come after first version is published
 ```  
 Then you can use the code fragment like below to make connection to the Infinispan Cache.
 
@@ -61,10 +61,10 @@ message Person {
    optional bytes picture = 3;
 }
 ```
-Note: PersonCache from above is name of the Infinispan cache the contents of the Person object stored or read from. If you are working with a application, an application defines where it reads/writes from. This is way Teiid choose to define this declaratively.  
+Note: PersonCache from above is name of the Infinispan cache the contents of the Person object stored or read from. If you are working with an custom application, then that application defines programmatically where it reads/writes from. Since there is no code in this model, this is way Teiid choose to define this property declaratively.  
 
 ### Data Types
-Protobuf define a very limited set of data types namely int32, int64, float, double, string, bool, bytes. However typically JDBC  applications are very rich in types like Date, Timestamp, XML, Blobs etc. This driver provides @Teiid annotation to decorate a Protobuf field such that they can be read as rich data types. For example to read a "bytes" field as "blob" you can define
+Protobuf defines a very limited set of data types namely int32, int64, float, double, string, bool, bytes. However typically JDBC  applications have more rich in types like Date, Timestamp, XML, Blobs, Geography etc. This driver provides support for @Teiid annotation to decorate a Protobuf's message field such that they can be read as rich data types through this driver. For example to read a "bytes" field as "blob" you can define as
 
 ```
 /* @Cache(name=PersonCache)
