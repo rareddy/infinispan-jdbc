@@ -19,8 +19,6 @@
 package io.infinispan.data;
 
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -147,18 +145,5 @@ public class InfinispanConnectionImpl extends BasicConnection implements Infinis
 		if (cache.get(scriptName) == null) {
 			cache.put(scriptName, script);
 		}
-	}
-	
-	static class ProxyCache implements InvocationHandler {
-
-	    public ProxyCache(Object instance) {
-	        
-	    }
-        @Override
-        public Object invoke(Object arg0, Method arg1, Object[] arg2) throws Throwable {
-            // TODO Auto-generated method stub
-            return null;
-        }
-	    
 	}
 }

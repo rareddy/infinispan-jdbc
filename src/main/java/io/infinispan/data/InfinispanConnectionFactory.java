@@ -23,12 +23,15 @@ import javax.resource.ResourceException;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.transaction.TransactionManager;
 
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
+import org.infinispan.client.hotrod.configuration.TransactionMode;
 import org.infinispan.client.hotrod.marshall.ProtoStreamMarshaller;
 import org.infinispan.commons.marshall.jboss.GenericJBossMarshaller;
+import org.infinispan.commons.tx.lookup.TransactionManagerLookup;
 import org.infinispan.protostream.FileDescriptorSource;
 import org.infinispan.protostream.SerializationContext;
 import org.infinispan.query.remote.client.ProtobufMetadataManagerConstants;
@@ -52,6 +55,7 @@ public class InfinispanConnectionFactory extends BaseConnectionFactory {
     private String authenticationRealm;
     private String authenticationServerName;
     private String cacheTemplate;
+    private TransactionManager txnManager;
     
 	private String trustStoreFileName = System.getProperty("javax.net.ssl.trustStore");
     private String trustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");
@@ -171,6 +175,10 @@ public class InfinispanConnectionFactory extends BaseConnectionFactory {
 	public void setCacheTemplate(String cacheTemplate) {
 		this.cacheTemplate = cacheTemplate;
 	}
+
+	public void setTransactionManager(TransactionManager transactionManager) {
+        this.txnManager = transactionManager;
+    }    
 	
     private void buildCacheManager() throws ResourceException {
         try {
@@ -179,6 +187,15 @@ public class InfinispanConnectionFactory extends BaseConnectionFactory {
             builder.marshaller(new ProtoStreamMarshaller());
             
             handleSecurity(builder);
+            
+            if (this.txnManager != null) {
+                builder.transaction().transactionManagerLookup(new TransactionManagerLookup() {
+                    @Override
+                    public TransactionManager getTransactionManager() throws Exception {
+                        return txnManager;
+                    }
+                }).transactionMode(TransactionMode.NON_XA);
+            }
 
             // note this object is expensive, so there needs to only one
             // instance for the JVM, in this case one per RA instance.

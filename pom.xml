@@ -61,6 +61,7 @@
 		<teiid.version>11.1.0-SNAPSHOT</teiid.version>
 		<javax.resource.version>1.0.0.Final</javax.resource.version>
 		<version.org.infinispan>9.3.1.Final</version.org.infinispan>
+		<narayana-jta.version>5.5.30.Final </narayana-jta.version>
 	</properties>
 
 	<dependencyManagement>
@@ -102,6 +103,11 @@
 				<artifactId>infinispan-remote-query-server</artifactId>
 				<version>${version.org.infinispan}</version>
 			</dependency>
+			<dependency>
+				<groupId>org.infinispan</groupId>
+				<artifactId>infinispan-server-hotrod</artifactId>
+				<version>${version.org.infinispan}</version>
+			</dependency>
 			<!--Project dependencies -->
 			<dependency>
 				<groupId>org.teiid.connectors</groupId>
@@ -119,6 +125,17 @@
 				<version>1.9.5</version>
 				<scope>test</scope>
 			</dependency>
+			<dependency>
+				<groupId>org.jboss.narayana.jta</groupId>
+				<artifactId>narayana-jta</artifactId>
+				<version>${narayana-jta.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.jboss</groupId>
+				<artifactId>jboss-transaction-spi</artifactId>
+				<version>7.6.0.Final</version>
+			</dependency>
+
 		</dependencies>
 	</dependencyManagement>
 
@@ -238,6 +255,16 @@
 			<groupId>org.infinispan</groupId>
 			<artifactId>infinispan-query-dsl</artifactId>
 		</dependency>
+		<!-- 
+		<dependency>
+			<groupId>org.jboss.narayana.jta</groupId>
+			<artifactId>narayana-jta</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.jboss</groupId>
+			<artifactId>jboss-transaction-spi</artifactId>
+		</dependency>
+		 -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -246,6 +273,19 @@
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-all</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.infinispan</groupId>
+			<artifactId>infinispan-server-hotrod</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- <dependency> <groupId>org.infinispan</groupId> <artifactId>infinispan-remote-query-client</artifactId> 
+			<scope>test</scope> </dependency> <dependency> <groupId>org.infinispan</groupId> 
+			<artifactId>infinispan-query-dsl</artifactId> <scope>test</scope> </dependency> -->
+		<dependency>
+			<groupId>org.infinispan</groupId>
+			<artifactId>infinispan-remote-query-server</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

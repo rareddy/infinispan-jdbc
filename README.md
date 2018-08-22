@@ -9,7 +9,7 @@ Since this driver is simple wrapper around the Teiid technology, you have all SQ
 ### Limitations
 This implementation does come with few limitations.
  * Only works with Remote Inifinispan over HotRod client. No, library mode.
- * Only works when you defined a "protobuf" file to work with your Cache contents. If are using freestyle objects, this will not work. (it should be also fairly simple to come with with DDL based schema)
+ * Only works when you defined a "protobuf" file to work with your Cache contents. If are using freestyle objects, this will not work. If you want to add new schema see section on Schema. 
  * Insert/Update/Delete only works when the Protobuf message has additional annotation to mark a column as Identity (@Id) column. See more details in "Enhancing Protobuf Metadata" section.
  * There can be only single top level message in your Protobuf file for single cache in Infinispan. See "Enhancing Protobuf Metadata" to define a way tie protobuf's message to cache such that more than single top level message can be defined in a single protobuf file.
  * Due to inherent nature of nested documents in the Infinispan cache, if a message has child(ren) messages, when parent is deleted all the children are cascade deleted also.
@@ -29,8 +29,16 @@ Statement statement = conn.createStatement();
 ResultSet resultSet = statement.executeQuery("select id, name, email from Person");
 writeResultSet(resultSet);
 ```
+
+# Schema
+If you are starting with empty schema (no protobuf) has defined, this driver gives couple different ways to define the schema of your cache. You can define a property called "schema" on your URL connection string, which can either be path to a .proto file or a .ddl file.
+### .proto file
+This can be any protobuf file that you want to register with Infinispan cache and access through this driver. You can use annotations defined in Enhancing the Protobuf Metadata in here too.
+
+### .ddl file
+Here the schema of the cache is defined in the form of DDL. Specifically using Teiid DDL. You can reference DDL documentation here http://teiid.github.io/teiid-documents/master/content/reference/DDL_Metadata.html and also look for extensions you would need to define on DDL for Infinispan cache for customization [here] (http://teiid.github.io/teiid-documents/master/content/reference/Infinispan_Translator.html#_details_on_protobuf_to_ddl_conversion). Typically as user you do not need to define these extensions manually in simple scenarios. When you supply the schema in DDL, the driver will first convert this schema into a compatible .proto file and register that protobuf file with the Infinispan cache.
  
-## Enhancing Protobuf Metadata
+# Enhancing Protobuf Metadata
 When you define your cache content structure in the Protobuf format, there are many different limitations. By defining few annotations below, you can solve some of these issues.
 
 ### No Identity Key

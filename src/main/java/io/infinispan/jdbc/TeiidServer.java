@@ -26,7 +26,7 @@ public class TeiidServer extends EmbeddedServer {
     public boolean hasConnectorManagerRepository(String name) {
         return this.cmr.getConnectorManager(name) != null;
     }
-    
+
     static class LocalCache<K, V> extends LRUCache<K, V> implements Cache<K, V> {
         private static final long serialVersionUID = -7894312381042966398L;
         private String name;

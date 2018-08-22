@@ -1,0 +1,15 @@
+package ispn;
+
+/* @Indexed*/
+message G1 {
+   /*
+     @Id
+     @Field(index=Index.YES)       
+    */
+   required int32 e1 = 1;
+   
+   /* @Field */
+   required string e2 = 2;
+
+   optional float e3 = 3;
+}

@@ -19,6 +19,7 @@
 package io.infinispan.jdbc;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -38,6 +39,7 @@ import org.teiid.adminapi.VDB;
 import org.teiid.cache.Cache;
 import org.teiid.cache.CacheFactory;
 import org.teiid.core.util.ApplicationInfo;
+import org.teiid.core.util.ObjectConverterUtil;
 import org.teiid.core.util.PropertiesUtils;
 import org.teiid.deployers.VirtualDatabaseException;
 import org.teiid.dqp.internal.datamgr.ConnectorManagerRepository.ConnectorManagerException;
@@ -53,7 +55,7 @@ import io.infinispan.jdbc.TeiidServer.LocalCache;
 /**
  * JDBC Driver class for Infinispan Remote cache cluster. The JDBC URL format is
  * <pre>
- *    jdbc:infinispan://&lt;host&gt;[:&lt;port&gt]/&lt;cache-name&gt;;protobuf=&lt;protobuf-name&gt;[...]    
+ *    jdbc:infinispan://&lt;host&gt;[:&lt;port&gt]/&lt;cache-name&gt;;protobuf=&lt;protobuf-name&gt;[...]
  * </pre>
  * Sample code looks like
  * <pre>
@@ -61,9 +63,9 @@ import io.infinispan.jdbc.TeiidServer.LocalCache;
         Connection conn = DriverManager.getConnection("jdbc:infinispan://localhost:11222/addressbook_indexed;protobuf=/quickstart/addressbook.proto");
         Statement statement = conn.createStatement();
         ResultSet resultSet = statement.executeQuery("select id, name, email from Person");
-        writeResultSet(resultSet);           
+        writeResultSet(resultSet);
  * </pre>
- * 
+ *
  * The following are allowed properties on the URL
  * <pre>
  *    protobuf => Name of the protobuf file name in the cache (required). Based on the name, the file is read directly from cache.
@@ -77,17 +79,19 @@ import io.infinispan.jdbc.TeiidServer.LocalCache;
 
 public class Driver implements java.sql.Driver {
     private static final String UTF_8 = "UTF-8"; //$NON-NLS-1$
+    //private static String transactionManagerClassName = "com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionManagerImple";
 
     static Logger logger = Logger.getLogger("org.infinispan.jdbc"); //$NON-NLS-1$
     static final String DRIVER_NAME = "Infinispan JDBC Driver"; //$NON-NLS-1$
     static final String JDBC_PROTOCOL = "jdbc:infinispan:"; //$NON-NLS-1$
     static final String URL_PATTERN = JDBC_PROTOCOL + "(?://([^;]*))?(;.*)?"; //$NON-NLS-1$
-    
-    static Pattern urlPattern = Pattern.compile(URL_PATTERN);    
-    
+
+    static Pattern urlPattern = Pattern.compile(URL_PATTERN);
+
     private static Driver INSTANCE = new Driver();
     private static TeiidServer TEIID;
-    
+    private EmbeddedConfiguration config;
+
     static {
         try {
             DriverManager.registerDriver(INSTANCE);
@@ -95,14 +99,15 @@ public class Driver implements java.sql.Driver {
             logger.log(Level.SEVERE, "Error registering the Infinispan JDBC Driver");
         }
     }
-    
+
     public static Driver getInstance() {
         return INSTANCE;
     }
-    
-    public Driver() {        
+
+    public Driver() {
     }
-    
+
+    @Override
     public ConnectionImpl connect(String url, Properties info) throws SQLException {
         Matcher m = urlPattern.matcher(url);
         if (!m.matches()) {
@@ -117,9 +122,9 @@ public class Driver implements java.sql.Driver {
         }
         Properties p = parseURL(url, info);
         String vdbName = initTeiid(p);
-        
+
         ConnectionImpl myConnection = TEIID.getDriver()
-                .connect("jdbc:teiid:" + vdbName 
+                .connect("jdbc:teiid:" + vdbName
                         + ";useCallingThread=true;autoFailover=true;waitForLoad=5000;", info);
         return myConnection;
     }
@@ -133,7 +138,7 @@ public class Driver implements java.sql.Driver {
             }
             if (!TEIID.hasConnectorManagerRepository(p.getProperty("cache"))) {
                 TEIID.addConnectionFactory(p.getProperty("cache"), buildConnectionFactory(p));
-            }            
+            }
             return buildAndDeployTeiidVDB(p, TEIID);
         } finally {
             Thread.currentThread().setContextClassLoader(previous);
@@ -149,40 +154,46 @@ public class Driver implements java.sql.Driver {
         }
         factory.setRemoteServerList(server);
         if (p.getProperty("username") != null) {
-            factory.setUserName(p.getProperty("username"));    
+            factory.setUserName(p.getProperty("username"));
         }
         if (p.getProperty("password") != null) {
-            factory.setPassword(p.getProperty("password"));    
-        }        
+            factory.setPassword(p.getProperty("password"));
+        }
         if (p.getProperty("saslMechanism") != null) {
-            factory.setSaslMechanism(p.getProperty("saslMechanism"));    
-        }        
+            factory.setSaslMechanism(p.getProperty("saslMechanism"));
+        }
         if (p.getProperty("authenticationRealm") != null) {
-            factory.setAuthenticationRealm(p.getProperty("authenticationRealm"));    
+            factory.setAuthenticationRealm(p.getProperty("authenticationRealm"));
         }
         if (p.getProperty("authenticationServerName") != null) {
-            factory.setAuthenticationServerName(p.getProperty("authenticationServerName"));    
+            factory.setAuthenticationServerName(p.getProperty("authenticationServerName"));
+        }
+        if (this.config.getTransactionManager() != null) {
+            factory.setTransactionManager(this.config.getTransactionManager());
         }
         return factory;
     }
-    
+
     /**
      * Returns true if the driver thinks that it can open a connection to the given URL.
      * Expected URL format is
      * jdbc:infinispan://server:port/CACHE;protobuf=xyz.proto;user=username;password=password
-     * 
+     *
      * @param The URL used to establish a connection.
      * @return A boolean value indicating whether the driver understands the subprotocol.
      * @throws SQLException, should never occur
      */
+    @Override
     public boolean acceptsURL(String url) throws SQLException {
         return urlPattern.matcher(url).matches();
     }
 
+    @Override
     public int getMajorVersion() {
         return ApplicationInfo.getInstance().getMajorReleaseVersion();
     }
 
+    @Override
     public int getMinorVersion() {
         return ApplicationInfo.getInstance().getMinorReleaseVersion();
     }
@@ -190,7 +201,8 @@ public class Driver implements java.sql.Driver {
     public String getDriverName() {
         return DRIVER_NAME;
     }
-    
+
+    @Override
     public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
         if(info == null) {
             info = new Properties();
@@ -201,12 +213,12 @@ public class Driver implements java.sql.Driver {
         info = parseURL(url, info);
 
         // construct list of driverPropertyInfo objects
-        List<DriverPropertyInfo> driverProps = new LinkedList<DriverPropertyInfo>();
+        List<DriverPropertyInfo> driverProps = new LinkedList<>();
 
         DriverPropertyInfo protobuf = new DriverPropertyInfo("protobuf", info.getProperty("protobuf"));
         protobuf.description = "Name of the protobuf file name in the cache (required). Based on the name, the file is read directly from cache.";
         protobuf.required = false;
-        
+
         DriverPropertyInfo username = new DriverPropertyInfo("username", info.getProperty("username"));
         username.description = "if cache is secured, defines the login user name";
         username.required = false;
@@ -214,7 +226,7 @@ public class Driver implements java.sql.Driver {
         DriverPropertyInfo password = new DriverPropertyInfo("password", info.getProperty("password"));
         password.description = "if cache is secured, defines the login password";
         password.required = false;
-        
+
         DriverPropertyInfo saslMechanism = new DriverPropertyInfo("saslMechanism", info.getProperty("saslMechanism"));
         saslMechanism.description = "Authentication mechanism";
         saslMechanism.required = false;
@@ -223,10 +235,14 @@ public class Driver implements java.sql.Driver {
         DriverPropertyInfo authenticationRealm = new DriverPropertyInfo("authenticationRealm", info.getProperty("authenticationRealm"));
         authenticationRealm.description = "if cache is secured with external server";
         authenticationRealm.required = false;
-        
+
         DriverPropertyInfo authenticationServerName = new DriverPropertyInfo("authenticationServerName", info.getProperty("authenticationServerName"));
         authenticationServerName.description = "if cache is secured with external server";
         authenticationServerName.required = false;
+
+        DriverPropertyInfo schema = new DriverPropertyInfo("schema", info.getProperty("schema"));
+        schema.description = "Schema of the cache to create. This can be .proto or .ddl files";
+        schema.required = false;
 
         driverProps.add(protobuf);
         driverProps.add(username);
@@ -234,7 +250,7 @@ public class Driver implements java.sql.Driver {
         driverProps.add(saslMechanism);
         driverProps.add(authenticationServerName);
         driverProps.add(authenticationRealm);
-        
+
         // create an array of DriverPropertyInfo objects
         DriverPropertyInfo [] propInfo = new DriverPropertyInfo[driverProps.size()];
 
@@ -245,7 +261,7 @@ public class Driver implements java.sql.Driver {
     protected Properties parseURL(String jdbcURL) {
         return parseURL(jdbcURL, new Properties());
     }
-    
+
     protected Properties parseURL(String jdbcURL, Properties p) {
         if (jdbcURL == null) {
             throw new IllegalArgumentException();
@@ -255,12 +271,12 @@ public class Driver implements java.sql.Driver {
         if (jdbcURL.length() == 0) {
             throw new IllegalArgumentException();
         }
-        
+
         Matcher m = urlPattern.matcher(jdbcURL);
         if (!m.matches()) {
             throw new IllegalArgumentException();
         }
-        
+
         String connectionURL = m.group(1);
         if (connectionURL != null) {
             connectionURL = getValidValue(connectionURL.trim());
@@ -276,17 +292,17 @@ public class Driver implements java.sql.Driver {
                 p.setProperty("host", connectionURL.substring(0, portidx).trim());
             } else {
                 p.setProperty("port", "11222");
-                p.setProperty("host", connectionURL.trim());                    
-            }            
+                p.setProperty("host", connectionURL.trim());
+            }
         }
-        
+
         String props = m.group(2);
         if (props != null) {
             parseConnectionProperties(props, p);
         }
         return p;
-    }    
-    
+    }
+
     static void parseConnectionProperties(String connectionInfo, Properties p) {
         String[] connectionParts = connectionInfo.split(";"); //$NON-NLS-1$
         if (connectionParts.length != 0) {
@@ -295,8 +311,8 @@ public class Driver implements java.sql.Driver {
                 parseConnectionProperty(connectionParts[i], p);
             }
         }
-    }   
-    
+    }
+
     static void parseConnectionProperty(String connectionProperty, Properties p) {
         if (connectionProperty.length() == 0) {
             // Be tolerant of double-semicolons and dangling semicolons
@@ -308,48 +324,50 @@ public class Driver implements java.sql.Driver {
         int firstEquals = connectionProperty.indexOf('=');
         if(firstEquals < 1) {
             throw new IllegalArgumentException();
-        } 
+        }
         String key = connectionProperty.substring(0, firstEquals).trim();
-        String value = connectionProperty.substring(firstEquals+1).trim();        
+        String value = connectionProperty.substring(firstEquals+1).trim();
         if(value.indexOf('=') >= 0) {
             throw new IllegalArgumentException();
-        }        
+        }
         p.setProperty(getValidValue(key), getValidValue(value));
     }
-    
+
     private static String getValidValue(String value) {
         try {
             // Decode the value of the property if incase they were encoded.
             return URLDecoder.decode(value, UTF_8);
         } catch (UnsupportedEncodingException e) {
             // use the original value
-        }            
+        }
         return value;
-    }  
-    
+    }
+
     /**
      * This method returns true if the driver passes jdbc compliance tests.
      * @return true if the driver is jdbc complaint, else false.
      */
+    @Override
     public boolean jdbcCompliant() {
         return false;
     }
 
+    @Override
     public Logger getParentLogger() {
         return logger;
     }
-    
-    private TeiidServer teiidServer() {
+
+    private TeiidServer teiidServer() throws SQLException {
         logger.info("Starting Teiid Server.");
-        
+
         // turning off PostgreSQL support
         System.setProperty("org.teiid.addPGMetadata", "false");
-        
+
         final TeiidServer server = new TeiidServer();
-        
-        EmbeddedConfiguration config = new EmbeddedConfiguration();
-        config.setUseDisk(false);
-        config.setCacheFactory(new CacheFactory() {
+
+        this.config = new EmbeddedConfiguration();
+        this.config.setUseDisk(false);
+        this.config.setCacheFactory(new CacheFactory() {
             @Override
             public <K, V> Cache<K, V> get(String name) {
                 return new LocalCache<>(name, 10);
@@ -358,26 +376,58 @@ public class Driver implements java.sql.Driver {
             public void destroy() {
             }
         });
-        
-        server.start(config);
+
+        /*try {
+            Class<?> clazz = Class.forName(transactionManagerClassName);
+            if (clazz != null) {
+                this.config.setTransactionManager((javax.transaction.TransactionManager)clazz.newInstance());
+            }
+        } catch (Exception e) {
+            // ignore
+            logger.info("No transaction manager found, ignoring transactions");
+        }*/
+
+        server.start(this.config);
         server.addTranslator("infinispan-hotrod", new InfinispanExecutionFactory());
         return server;
     }
-    
+
     private String buildAndDeployTeiidVDB(Properties p, TeiidServer ts) throws SQLException {
-        String vdb = 
-                "<vdb name=\"{cache}\" version=\"1\">\n" + 
-                "    <model name=\"ispn\">\n" + 
-                "        <property name=\"importer.ProtobufName\" value=\"{protobuf}\"/>\n" + 
-                "        <source name=\"{host}\" translator-name=\"infinispan-hotrod\" connection-jndi-name=\"{cache}\"/>\n" + 
-                "        <metadata type = \"NATIVE\"/>\n" + 
-                "    </model>\n" + 
-                "</vdb>";
-        vdb = vdb.replace("{cache}", p.getProperty("cache"));
-        vdb = vdb.replace("{host}", p.getProperty("host"));
-        vdb = vdb.replace("{protobuf}", p.getProperty("protobuf"));
-        
         try {
+            String schema = "";
+            String metadata = "";
+            if (p.getProperty("protobuf") == null) {
+                if (p.getProperty("schema") != null && p.getProperty("schema").endsWith(".proto")) {
+                    schema = "        <property name=\"importer.ProtoFilePath\" value=\"{schema}\"/>\n";
+                    metadata = "        <metadata type = \"NATIVE\"/>\n";
+                } else if (p.getProperty("schema") != null && p.getProperty("schema").endsWith(".ddl")) {
+                    String ddl = ObjectConverterUtil.convertToString(new FileReader(p.getProperty("schema")));
+                    metadata = "        <metadata type = \"DDL\"><![CDATA[\n" +
+                            ddl +
+                            "        ]]>\n" +
+                            "       </metadata>\n" +
+                            "       <metadata type = \"NATIVE\"/>";
+                } else {
+                    throw new SQLException("No protobuf nor schema information is supplied. Must define protobuf or schema proeprties");
+                }
+            } else {
+                schema = "        <property name=\"importer.ProtobufName\" value=\"{protobuf}\"/>\n";
+                metadata = "        <metadata type = \"NATIVE\"/>\n";
+            }
+
+            String vdb =
+                    "<vdb name=\"{cache}\" version=\"1\">\n" +
+                    "    <model name=\"ispn\">\n" +
+                    schema +
+                    "        <source name=\"{host}\" translator-name=\"infinispan-hotrod\" connection-jndi-name=\"{cache}\"/>\n" +
+                    metadata +
+                    "    </model>\n" +
+                    "</vdb>";
+            vdb = vdb.replace("{cache}", p.getProperty("cache"));
+            vdb = vdb.replace("{host}", p.getProperty("host"));
+            vdb = vdb.replace("{protobuf}", p.getProperty("protobuf", ""));
+            vdb = vdb.replace("{schema}", p.getProperty("schema", ""));
+
             VDB v = ts.getAdmin().getVDB(p.getProperty("cache"), "1");
             if (v == null) {
                 ts.deployVDB(new ByteArrayInputStream(vdb.getBytes()));

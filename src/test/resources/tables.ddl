@@ -1,0 +1,6 @@
+CREATE FOREIGN TABLE G1 (
+    e1 integer NOT NULL,
+    e2 string NOT NULL,
+    e3 float,
+    CONSTRAINT PK_E1 PRIMARY KEY(e1)
+) OPTIONS (UPDATABLE TRUE);
