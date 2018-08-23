@@ -37,7 +37,7 @@ public class HotRodTestServer {
         GlobalConfiguration config = gc.build();
         this.defaultCacheManager = new DefaultCacheManager(config, c.build(config));
         this.defaultCacheManager.defineConfiguration("default", getConfigurationBuilder().build());
-        
+
         this.defaultCacheManager.defineConfiguration("foo", getConfigurationBuilder().build());
 
         this.defaultCacheManager.startCaches("default", "foo", ProtobufMetadataManagerConstants.PROTOBUF_METADATA_CACHE_NAME);
@@ -56,7 +56,7 @@ public class HotRodTestServer {
                 .addProperty("lucene_version", "LUCENE_CURRENT");
         return builder;
     }
-    
+
     public void stop() {
         if (server != null) {
             this.defaultCacheManager.stop();

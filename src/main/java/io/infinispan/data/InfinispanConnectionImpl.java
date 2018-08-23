@@ -82,7 +82,7 @@ public class InfinispanConnectionImpl extends BasicConnection implements Infinis
     public BasicCache getCache() throws TranslatorException {
         return defaultCache;
     }
-    
+
     @SuppressWarnings({"unchecked" })
     @Override
     public <K, V> BasicCache<K, V> getCache(String cacheName, boolean createIfNotExists) throws TranslatorException{

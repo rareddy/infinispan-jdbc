@@ -25,31 +25,35 @@ import javax.transaction.xa.XAResource;
 
 public abstract class BaseConnection implements Connection {
 
-	public Interaction createInteraction() throws ResourceException {
+	@Override
+    public Interaction createInteraction() throws ResourceException {
 		throw new ResourceException("This operation not supported"); //$NON-NLS-1$
 	}
 
-	public LocalTransaction getLocalTransaction() throws ResourceException {
+	@Override
+    public LocalTransaction getLocalTransaction() throws ResourceException {
 		return null;
 	}
 
-	public ConnectionMetaData getMetaData() throws ResourceException {
+	@Override
+    public ConnectionMetaData getMetaData() throws ResourceException {
 		throw new ResourceException("This operation not supported"); //$NON-NLS-1$
 	}
 
-	public ResultSetInfo getResultSetInfo() throws ResourceException {
+	@Override
+    public ResultSetInfo getResultSetInfo() throws ResourceException {
 		throw new ResourceException("This operation not supported"); //$NON-NLS-1$
 	}
-	
+
 	public XAResource getXAResource() throws ResourceException {
 		return null;
 	}
-	
+
 	public boolean isAlive() {
 		return true;
 	}
-	
+
 	public void cleanUp() {
-		
+
 	}
 }
