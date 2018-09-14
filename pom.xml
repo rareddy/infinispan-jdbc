@@ -19,13 +19,13 @@
 
 	<issueManagement>
 		<system>jira</system>
-		<url>https://issues.jboss.org/browse/TEIID</url>
+		<url>https://issues.jboss.org/projects/ISPN</url>
 	</issueManagement>
 
 	<scm>
-		<connection>scm:git:git@github.com:teiid/teiid-spring-boot.git</connection>
-		<developerConnection>scm:git:git@github.com:teiid/teiid-spring-boot.git</developerConnection>
-		<url>https://github.com/teiid/teiid-spring-boot</url>
+		<connection>scm:git:git@github.com:infinispan/infinispan-jdbc.git</connection>
+		<developerConnection>scm:git:git@github.com:infinispan/infinispan-jdbc.git</developerConnection>
+		<url>https://github.com/infinispan/infinispan-jdbc</url>
 		<tag>HEAD</tag>
 	</scm>
 
@@ -36,7 +36,7 @@
 			<email>rareddy@redhat.com</email>
 			<organization>Red Hat</organization>
 			<roles>
-				<role>Project Lead</role>
+				<role>Developer</role>
 			</roles>
 			<timezone>-6</timezone>
 		</developer>
@@ -58,7 +58,7 @@
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
 
-		<teiid.version>11.1.0-SNAPSHOT</teiid.version>
+		<teiid.version>11.1.0</teiid.version>
 		<javax.resource.version>1.0.0.Final</javax.resource.version>
 		<version.org.infinispan>9.3.1.Final</version.org.infinispan>
 		<narayana-jta.version>5.5.30.Final </narayana-jta.version>
@@ -148,9 +148,8 @@
 			<groupId>org.teiid</groupId>
 			<artifactId>teiid-runtime</artifactId>
 			<exclusions>
-
-				<!-- <exclusion> <groupId>org.jgroups</groupId> <artifactId>jgroups</artifactId> 
-					</exclusion> -->
+                <!-- <exclusion> <groupId>org.jgroups</groupId> <artifactId>jgroups</artifactId> 
+					</exclusion>  -->
 				<exclusion>
 					<groupId>io.netty</groupId>
 					<artifactId>netty-all</artifactId>
